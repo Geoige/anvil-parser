@@ -1,25 +1,18 @@
 # anvil-parser
-Minecraft Anvil file parser in JS
+Minecraft Anvil file and NBT parser in JS
 
 ## Usage
-Get NBTs from an Anvil file ArrayBuffer
+Get NBTs from an Anvil file ArrayBuffer (requires pako.js in scope):
 ```
 var nbts = anvilToNbt.getNbts(mca)
 ```
-Parse NBT (requires pako.js in scope)
+Parse NBT:
 ```
 var parser = new nbtParser.NBTParser();
 var result = parser.parse(nbt);
 ```
-Using with FileReader
-```
-var reader = new FileReader();
-reader.onload = function(e) {
-  var nbts = anvilToNbt.getNbts(reader.result);
-  var parser = new nbtParser.NBTParser();
-  var result = parser.parse(nbts[0]);
-  console.log(result);
-};
 
-reader.readAsArrayBuffer(file);
-```
+A working example is provided [here](./example/index.html).
+
+## License
+MIT [LICENSE](./LICENSE)

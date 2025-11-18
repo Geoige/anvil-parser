@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Item Finder</title>
+	<style>
+		table, th, td {
+			border: 1px solid black;
+			border-collapse: collapse;
+			font-family: monospace;
+		}
+
+		#loader {
+			display: none;
+			border: 4px solid #f3f3f3;
+			border-top: 4px solid #000;
+			border-radius: 50%;
+			width: 12px;
+			height: 12px;
+			animation: spin 1s linear infinite;
+		}
+
+		#counter {
+			display: none;
+		}
+
+		@keyframes spin {
+			0% { transform: rotate(0deg); }
+			100% { transform: rotate(360deg); }
+		}
+	</style>
+</head>
+<body>
+	<div id="main">
+		This example takes .mca files, parses them, lists all the entities and their coordinates, and allows you to filter by the entity ID.
+		<br/>
+		E.g. if you've died, dropped your items and can't remember where, you could search for a "diamond_pickaxe".
+		<br/>
+		<br/>
+		Select .mca file(s) from a save folder (e.g. C:\Users\Me\AppData\Roaming\.minecraft\saves\New World\entities).
+		<br/>
+		More info on file locations can be found <a href="https://minecraft.fandom.com/wiki/Java_Edition_level_format">here</a>.
+		<br/>
+		<input type="text" id="filterBy">
+		<br/>
+		<input type="file" multiple id="fileInput">
+		<input type="button" value="Run" id="run">
+		<div id="loader"></div>
+		<div id="counter"></div>
+	<br/>
+	<span id="error" style="color: red"></span>
+	</div>
+	<table id="results" hidden="true">
+		<thead>
+			<tr>
+				<th>Entity</th>
+				<th>Position (XYZ)</th>
+			</tr>
+		</thead>
+		<tbody></tbody>
+	</table>
+	<script type="text/javascript" src="../src/pako.js"></script>
+	<script type="text/javascript" src="../src/anvilToNbt.js"></script>
+	<script type="text/javascript" src="../src/nbtParser.js"></script>
+	<script type="text/javascript">
+		let data = []
+		let running = false
+
+		window.onload = function() {
+			document.getElementById('run').addEventListener('click', run)
+			document.getElementById('filterBy').addEventListener('input', render)
+		}
+
+		const run = async function () {
+			if (running) return
+			data = []
+			let count = 0
+			const error = document.getElementById('error')
+			error.innerText = ''
+			const fileInput = document.getElementById('fileInput')
+			if (!fileInput.files.length) return error.innerText = 'No files selected'
+
+			running = true
+			const loader = document.getElementById('loader')
+			loader.style.display = 'block'
+			const files = Array.from(fileInput.files)
+			const counterEl = document.getElementById('counter')
+			counterEl.style.display = 'block'
+			counterEl.innerText = `0/${files.length}`
+
+			for (const file of files) {
+				await new Promise(function (res) {
+					const reader = new FileReader()
+					reader.onload = async function () {
+						const result = parseFile(reader.result)
+						handleResult(result)
+						counterEl.innerText = `${++count}/${files.length}`
+						res()
+					}
+					reader.readAsArrayBuffer(file)
+				})
+			}
+
+			running = false
+			loader.style.display = 'none'
+			counter.style.display = 'none'
+			render()
+		}
+
+		const parseFile = function (mca) {
+			const nbts = anvilToNbt.getNbts(mca)
+			const parser = new nbtParser.NBTParser()
+			return nbts.map(nbt => parser.parse(nbt))
+		}
+
+		const handleResult = function (result) {
+			for (const chunk of result) {
+				for (const entity of chunk?.Entities) {
+					if (entity.id !== 'minecraft:item') continue
+					const pos = `${entity.Pos[0].toFixed(3)} / ${entity.Pos[1].toFixed(5)} / ${entity.Pos[2].toFixed(3)}`
+					data.push([entity.Item.id.substring(10), pos])
+				}
+			}
+		}
+
+		const render = function () {
+			const filterBy = document.getElementById('filterBy').value
+			const dataToRender = data.filter(row => row[0].includes(filterBy))
+			const results = document.getElementById('results')
+			results.hidden = false
+			const tableBody = results.getElementsByTagName('tbody')[0]
+			tableBody.innerHTML = ''
+			for (const row of dataToRender) {
+				tableBody.innerHTML += `<tr><td>${row[0]}</td><td>${row[1]}</td></tr>`
+			}
+		}
+	</script>
+</body>
+</html>
